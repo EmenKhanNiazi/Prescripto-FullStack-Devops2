@@ -1,0 +1,45 @@
+version: "3.9"
+services:
+  backend:
+    build: ./backend
+    container_name: prescripto-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    ports:
+      - "4000:4000"
+    networks:
+      - prescripto
+
+  client:
+    build: ./clientside
+    container_name: prescripto-client
+    restart: unless-stopped
+    environment:
+      - VITE_BACKEND_URL=http://65.1.148.115:4000
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    networks:
+      - prescripto
+
+  admin:
+    build: ./admin
+    container_name: prescripto-admin
+    restart: unless-stopped
+    environment:
+      - VITE_BACKEND_URL=http://65.1.148.115:4000
+    depends_on:
+      - backend
+    ports:
+      - "5174:5174"
+    networks:
+      - prescripto
+
+networks:
+  prescripto:
+    driver: bridge
+
+
+
