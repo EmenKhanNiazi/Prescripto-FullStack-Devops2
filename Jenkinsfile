@@ -34,14 +34,14 @@ pipeline {
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$(pwd)":/workdir -w /workdir \
-            docker/compose:2.18.1 -f ${CI_COMPOSE} down --volumes --remove-orphans || true
+            docker/compose:latest -f ${CI_COMPOSE} down --volumes --remove-orphans || true
         '''
         // run build (abort when containers exit)
         sh '''
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$(pwd)":/workdir -w /workdir \
-            docker/compose:2.18.1 -f ${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans
+            docker/compose:latest -f ${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans
         '''
       }
     }
@@ -60,7 +60,7 @@ pipeline {
         docker run --rm \
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v "$(pwd)":/workdir -w /workdir \
-          docker/compose:2.18.1 -f ${CI_COMPOSE} down --volumes --remove-orphans || true
+          docker/compose:latest -f ${CI_COMPOSE} down --volumes --remove-orphans || true
         rm -f clientside/.env admin/.env || true
       '''
     }
