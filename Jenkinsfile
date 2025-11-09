@@ -13,14 +13,16 @@ pipeline {
 
     stage('Inject env for frontends') {
       steps {
+        // read secret credential and write .env files for client and admin
+        // NOTE: set the credentialsId to the Secret Text you added in Jenkins (VITE_BACKEND_URL)
         withCredentials([string(credentialsId: 'VITE_BACKEND_URL', variable: 'VITE_BACKEND_URL')]) {
           sh '''
+            # create .env files inside the workspace (these are transient)
             echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > clientside/.env
             echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > admin/.env
-            echo "Wrote clientside/.env and admin/.env:"
-            # do not print the secret in production; this is for debug
-            cat clientside/.env || true
-            cat admin/.env || true
+            echo "Wrote clientside/.env and admin/.env"
+            # do not print the secret in production; kept minimal here
+            ls -la clientside admin || true
           '''
         }
       }
@@ -28,20 +30,23 @@ pipeline {
 
     stage('CI Build (containerized)') {
       steps {
-        // ensure no leftover CI containers using docker/compose image
+        // debug workspace to confirm files
+        sh 'pwd; ls -la . || true'
+
+        // run docker-compose down using official docker/compose container (absolute path)
         sh '''
-          # run docker-compose down using compose container
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$(pwd)":/workdir -w /workdir \
-            docker/compose:latest -f ${CI_COMPOSE} down --volumes --remove-orphans || true
+            docker/compose:latest -f /workdir/${CI_COMPOSE} down --volumes --remove-orphans || true
         '''
-        // run build (abort when containers exit)
+
+        // run docker-compose up to build inside node containers (abort when containers exit)
         sh '''
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$(pwd)":/workdir -w /workdir \
-            docker/compose:latest -f ${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans
+            docker/compose:latest -f /workdir/${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans
         '''
       }
     }
@@ -55,12 +60,12 @@ pipeline {
 
   post {
     always {
-      // cleanup CI containers using docker/compose container and remove transient .env files
+      // ensure clean state and remove transient .env files
       sh '''
         docker run --rm \
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v "$(pwd)":/workdir -w /workdir \
-          docker/compose:latest -f ${CI_COMPOSE} down --volumes --remove-orphans || true
+          docker/compose:latest -f /workdir/${CI_COMPOSE} down --volumes --remove-orphans || true
         rm -f clientside/.env admin/.env || true
       '''
     }
