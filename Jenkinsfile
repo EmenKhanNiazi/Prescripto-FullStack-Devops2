@@ -13,13 +13,12 @@ pipeline {
 
     stage('Inject env for frontends') {
       steps {
-        // read secret credential and write .env files for client and admin
         withCredentials([string(credentialsId: 'VITE_BACKEND_URL', variable: 'VITE_BACKEND_URL')]) {
-          // create .env files (safe overwrite) — these are only on the CI host workspace
           sh '''
             echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > clientside/.env
             echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > admin/.env
             echo "Wrote clientside/.env and admin/.env:"
+            # do not print the secret in production; this is for debug
             cat clientside/.env || true
             cat admin/.env || true
           '''
@@ -29,16 +28,26 @@ pipeline {
 
     stage('CI Build (containerized)') {
       steps {
-        // ensure no leftover CI containers
-        sh "docker-compose -f ${CI_COMPOSE} down --volumes --remove-orphans || true"
-        // bring up CI compose which will run npm install/build inside node containers
-        sh "docker-compose -f ${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans"
+        // ensure no leftover CI containers using docker/compose image
+        sh '''
+          # run docker-compose down using compose container
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$(pwd)":/workdir -w /workdir \
+            docker/compose:2.18.1 -f ${CI_COMPOSE} down --volumes --remove-orphans || true
+        '''
+        // run build (abort when containers exit)
+        sh '''
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$(pwd)":/workdir -w /workdir \
+            docker/compose:2.18.1 -f ${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans
+        '''
       }
     }
 
     stage('Archive') {
       steps {
-        // adjust paths if your builds place artifacts elsewhere
         archiveArtifacts artifacts: 'clientside/dist/**, admin/dist/**', allowEmptyArchive: true
       }
     }
@@ -46,9 +55,14 @@ pipeline {
 
   post {
     always {
-      // cleanup CI containers and remove the transient .env files for safety
-      sh "docker-compose -f ${CI_COMPOSE} down --volumes --remove-orphans || true"
-      sh "rm -f clientside/.env admin/.env || true"
+      // cleanup CI containers using docker/compose container and remove transient .env files
+      sh '''
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v "$(pwd)":/workdir -w /workdir \
+          docker/compose:2.18.1 -f ${CI_COMPOSE} down --volumes --remove-orphans || true
+        rm -f clientside/.env admin/.env || true
+      '''
     }
   }
 }
