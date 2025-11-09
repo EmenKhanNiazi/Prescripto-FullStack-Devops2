@@ -30,9 +30,9 @@ pipeline {
     stage('CI Build (containerized)') {
       steps {
         // ensure no leftover CI containers
-        sh "docker compose -f ${CI_COMPOSE} down --volumes --remove-orphans || true"
+        sh "docker-compose -f ${CI_COMPOSE} down --volumes --remove-orphans || true"
         // bring up CI compose which will run npm install/build inside node containers
-        sh "docker compose -f ${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans"
+        sh "docker-compose -f ${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans"
       }
     }
 
@@ -47,7 +47,7 @@ pipeline {
   post {
     always {
       // cleanup CI containers and remove the transient .env files for safety
-      sh "docker compose -f ${CI_COMPOSE} down --volumes --remove-orphans || true"
+      sh "docker-compose -f ${CI_COMPOSE} down --volumes --remove-orphans || true"
       sh "rm -f clientside/.env admin/.env || true"
     }
   }
