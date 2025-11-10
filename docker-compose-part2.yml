@@ -29,7 +29,7 @@ services:
     container_name: prescripto-client-dev # New container name
     restart: "no"
     environment:
-      - VITE_BACKEND_URL=http://54.221.63.82:4001
+      - VITE_BACKEND_URL=http://35.173.129.203:4001  
     depends_on:
       - backend-dev
     ports:

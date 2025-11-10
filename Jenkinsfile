@@ -36,7 +36,7 @@ pipeline {
                 echo 'Checking container status...'
                 sleep 10 
                 sh 'docker-compose -f docker-compose-part2.yml ps'
-                echo "Deployment Complete. Access at http://54.221.63.82:5174"
+                echo "Deployment Complete. Access at http://35.173.129.203:5174"
             }
         }
     }
