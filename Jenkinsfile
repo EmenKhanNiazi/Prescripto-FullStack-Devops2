@@ -1,53 +1,43 @@
+// Jenkinsfile (Declarative Pipeline)
+
 pipeline {
     agent any
-    environment {
-        CI_COMPOSE = 'docker-compose.ci.yml'
+
+    options {
+        timeout(time: 15, unit: 'MINUTES') 
     }
+
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
+                echo 'Cloning repository from GitHub...'
                 checkout scm
-                sh 'ls -la'
             }
         }
 
-        stage('Inject env for frontends') {
+        stage('Stop Existing Containers') {
             steps {
-                withCredentials([string(credentialsId: 'vite-backend-url', variable: 'VITE_BACKEND_URL')]) {
-                    sh '''
-                    echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > clientside/.env
-                    echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > admin/.env
-                    echo "Wrote clientside/.env and admin/.env"
-                    ls -la clientside admin
-                    '''
-                }
+                echo 'Stopping and removing any previous containers to meet "down initially" requirement...'
+                // CRITICAL: Ensures the environment is down initially
+                sh 'docker-compose -f docker-compose-part2.yml down --remove-orphans'
             }
         }
 
-        stage('CI Build (docker-compose native)') {
+        stage('Containerized Up') {
             steps {
-                sh '''
-                pwd
-                ls -la .
-                docker-compose -f ${CI_COMPOSE} down --volumes --remove-orphans || true
-                docker-compose -f ${CI_COMPOSE} up --build --abort-on-container-exit --remove-orphans
-                '''
+                echo 'Launching containerized application using docker-compose-part2.yml...'
+                // 'up -d' launches the app in detached mode
+                sh 'docker-compose -f docker-compose-part2.yml up -d'
             }
         }
 
-        stage('Archive') {
+        stage('Verify Deployment') {
             steps {
-                echo 'Build done.'
+                echo 'Checking container status...'
+                sleep 10 
+                sh 'docker-compose -f docker-compose-part2.yml ps'
+                echo "Deployment Complete. Access at http://54.221.63.82:5174"
             }
-        }
-    }
-
-    post {
-        always {
-            sh '''
-            docker-compose -f ${CI_COMPOSE} down --volumes --remove-orphans || true
-            rm -f clientside/.env admin/.env
-            '''
         }
     }
 }

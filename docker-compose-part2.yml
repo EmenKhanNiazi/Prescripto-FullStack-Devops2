@@ -1,0 +1,50 @@
+version: "3.9"
+services:
+  backend-dev: # New service name
+    image: node:18-alpine # <--- Uses base image instead of 'build'
+    container_name: prescripto-backend-dev # New container name
+    restart: "no"
+    env_file:
+      - ./backend/.env
+    ports:
+      - "4001:4000" # New host port (4001)
+    volumes: # <--- Code volume bind mount
+      - .:/app 
+      - /app/backend/node_modules 
+    working_dir: /app/backend 
+    command: sh -c "npm install && npm start"
+    networks:
+      - prescripto-dev
+
+  db: # Database service (Mandatory Requirement)
+    image: mongo:latest # Use your specific DB image (mongo, postgres, etc.)
+    container_name: prescripto-db-dev
+    volumes:
+      - db_data_part2:/data/db # <--- Persistent named volume for data
+    networks:
+      - prescripto-dev
+
+  client-dev: # New service name
+    image: node:18-alpine
+    container_name: prescripto-client-dev # New container name
+    restart: "no"
+    environment:
+      - VITE_BACKEND_URL=http://54.221.63.82:4001
+    depends_on:
+      - backend-dev
+    ports:
+      - "5174:5173" # New host port (5174)
+    volumes: # <--- Code volume bind mount
+      - .:/app
+      - /app/clientside/node_modules
+    working_dir: /app/clientside
+    command: npm run dev
+    networks:
+      - prescripto-dev
+
+networks:
+  prescripto-dev:
+    driver: bridge
+
+volumes:
+  db_data_part2: 
