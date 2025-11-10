@@ -1,14 +1,14 @@
 version: "3.9"
 services:
   backend-dev: # New service name
-    image: node:18-alpine # <--- Uses base image instead of 'build'
-    container_name: prescripto-backend-dev # New container name
+    image: node:18-alpine 
+    container_name: prescripto-backend-dev 
     restart: "no"
     env_file:
       - ./backend/.env
     ports:
       - "4001:4000" # New host port (4001)
-    volumes: # <--- Code volume bind mount
+    volumes: # Code volume bind mount
       - .:/app 
       - /app/backend/node_modules 
     working_dir: /app/backend 
@@ -16,29 +16,31 @@ services:
     networks:
       - prescripto-dev
 
-  db: # Database service (Mandatory Requirement)
-    image: mongo:latest # Use your specific DB image (mongo, postgres, etc.)
+  db: # Database service with persistent volume
+    image: mongo:latest 
     container_name: prescripto-db-dev
     volumes:
-      - db_data_part2:/data/db # <--- Persistent named volume for data
+      - db_data_part2:/data/db # Persistent named volume for data
     networks:
       - prescripto-dev
 
   client-dev: # New service name
     image: node:18-alpine
-    container_name: prescripto-client-dev # New container name
+    container_name: prescripto-client-dev 
     restart: "no"
     environment:
-      - VITE_BACKEND_URL=http://35.173.129.203:4001  
+      # CRITICAL: New EC2 IP and backend port
+      - VITE_BACKEND_URL=http://35.173.129.203:4001 
     depends_on:
       - backend-dev
     ports:
       - "5174:5173" # New host port (5174)
-    volumes: # <--- Code volume bind mount
+    volumes: # Code volume bind mount
       - .:/app
       - /app/clientside/node_modules
     working_dir: /app/clientside
-    command: npm run dev
+    # CRITICAL FIX: Run npm install before npm run dev
+    command: sh -c "npm install && npm run dev" 
     networks:
       - prescripto-dev
 
@@ -47,4 +49,4 @@ networks:
     driver: bridge
 
 volumes:
-  db_data_part2: 
+  db_data_part2:
